@@ -17,7 +17,7 @@
 - Конкретное приложение передаёт URI trust policy, network/cancellation gate, заголовки/cookies, persistence adapter и прикладной интерфейс выполнения worker-а.
 - Remote manifest может выбрать зарегистрированный ключ worker-а, но не может загрузить или установить исполняемый код.
 
-Проверено на HOSTKEY для предыдущего слоя: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS. Проверка registry выполняется перед merge этой версии.
+Проверено на HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS; source-worker registry self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
 ## EN
 
@@ -34,7 +34,7 @@ Reusable download-engine building blocks for Skazka and other Android projects.
 - The concrete application supplies URI trust policy, network/cancellation gate, headers/cookies, persistence adapter, and the application-specific worker execution interface.
 - A remote manifest may select a registered worker key, but cannot download or install executable code.
 
-Previously verified on HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS. Registry verification runs before this version is merged.
+Verified on HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS; source-worker registry self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
 ## Coordinates / Координаты
 
