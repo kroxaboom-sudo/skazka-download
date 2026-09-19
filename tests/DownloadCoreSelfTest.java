@@ -94,6 +94,17 @@ public final class DownloadCoreSelfTest {
         check(RetryAfter.fallbackMillis(429, "", now) == 5000L, "429 fallback");
         check(RetryAfter.fallbackMillis(503, "", now) == 3000L, "generic rejection fallback");
 
+        MemoryStore noRecoveryStore = new MemoryStore(List.of(
+                new DownloadTask("running", DownloadState.RUNNING, 1, 123, now - 30),
+                new DownloadTask("network", DownloadState.NETWORK, 0, 0, now - 20)
+        ));
+        QueueRepository noRecovery = QueueRepository.open(noRecoveryStore);
+        check(noRecovery.get("running").orElseThrow().state() == DownloadState.RUNNING,
+                "plain open preserves running state");
+        check(noRecovery.get("network").orElseThrow().state() == DownloadState.NETWORK,
+                "plain open preserves network state");
+        check(noRecoveryStore.writes == 0, "plain open does not rewrite valid snapshot");
+
         MemoryStore store = new MemoryStore(List.of(
                 new DownloadTask("recover", DownloadState.RUNNING, 1, 123, now - 20),
                 new DownloadTask("paused", DownloadState.PAUSED, 0, 0, now - 10)
