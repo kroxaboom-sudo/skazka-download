@@ -36,16 +36,48 @@ public final class HttpTransferClient {
         void bytes(long total) throws IOException;
     }
 
+    public interface HeaderProvider {
+        Map<String, String> headers(URI uri) throws IOException;
+    }
+
+    public interface ConnectionLifecycle {
+        default void beforeOpen(URI uri) throws IOException {}
+
+        default void opened(URI uri, HttpURLConnection connection) {}
+
+        default void closed(URI uri, HttpURLConnection connection) {}
+    }
+
     private final UriPolicy uriPolicy;
     private final Gate gate;
     private final RejectionListener rejectionListener;
     private final Progress progress;
+    private final HeaderProvider headerProvider;
+    private final ConnectionLifecycle connectionLifecycle;
 
     public HttpTransferClient(
             UriPolicy uriPolicy,
             Gate gate,
             RejectionListener rejectionListener,
             Progress progress
+    ) {
+        this(
+                uriPolicy,
+                gate,
+                rejectionListener,
+                progress,
+                uri -> Map.of(),
+                new ConnectionLifecycle() {}
+        );
+    }
+
+    public HttpTransferClient(
+            UriPolicy uriPolicy,
+            Gate gate,
+            RejectionListener rejectionListener,
+            Progress progress,
+            HeaderProvider headerProvider,
+            ConnectionLifecycle connectionLifecycle
     ) {
         if (uriPolicy == null || gate == null) {
             throw new IllegalArgumentException("URI policy and gate are required");
@@ -55,6 +87,9 @@ public final class HttpTransferClient {
         this.rejectionListener =
                 rejectionListener == null ? (uri, status, retryAfter) -> {} : rejectionListener;
         this.progress = progress == null ? total -> {} : progress;
+        this.headerProvider = headerProvider == null ? uri -> Map.of() : headerProvider;
+        this.connectionLifecycle =
+                connectionLifecycle == null ? new ConnectionLifecycle() {} : connectionLifecycle;
     }
 
     public HttpTransferResult download(HttpTransferRequest request, Path target) throws IOException {
@@ -90,16 +125,27 @@ public final class HttpTransferClient {
                 throw new IOException("Transfer URI rejected by policy");
             }
 
-            HttpURLConnection connection = (HttpURLConnection) current.toURL().openConnection();
-            connection.setInstanceFollowRedirects(false);
-            connection.setConnectTimeout(request.connectTimeoutMillis());
-            connection.setReadTimeout(request.readTimeoutMillis());
-            applyHeaders(connection, request.headers(), initial, current);
-            if (existing > 0) {
-                connection.setRequestProperty("Range", "bytes=" + existing + "-");
-            }
+            URI connectionUri = current;
+            connectionLifecycle.beforeOpen(connectionUri);
+            HttpURLConnection connection =
+                    (HttpURLConnection) connectionUri.toURL().openConnection();
 
             try {
+                connection.setInstanceFollowRedirects(false);
+                connection.setConnectTimeout(request.connectTimeoutMillis());
+                connection.setReadTimeout(request.readTimeoutMillis());
+                applyHeaders(connection, request.headers(), initial, connectionUri);
+                applyHeaders(
+                        connection,
+                        headerProvider.headers(connectionUri),
+                        connectionUri,
+                        connectionUri
+                );
+                if (existing > 0) {
+                    connection.setRequestProperty("Range", "bytes=" + existing + "-");
+                }
+
+                connectionLifecycle.opened(connectionUri, connection);
                 gate.check();
                 int status = connection.getResponseCode();
 
@@ -111,13 +157,13 @@ public final class HttpTransferClient {
                     if (location == null || location.isBlank()) {
                         throw new IOException("Redirect without Location");
                     }
-                    current = current.resolve(location.trim());
+                    current = connectionUri.resolve(location.trim());
                     continue;
                 }
 
                 if (status == 429 || status == 503) {
                     rejectionListener.rejected(
-                            current,
+                            connectionUri,
                             status,
                             connection.getHeaderField("Retry-After")
                     );
@@ -199,7 +245,7 @@ public final class HttpTransferClient {
                 }
 
                 return new HttpTransferResult(
-                        current,
+                        connectionUri,
                         status,
                         count,
                         append,
@@ -207,6 +253,12 @@ public final class HttpTransferClient {
                 );
             } finally {
                 connection.disconnect();
+                try {
+                    connectionLifecycle.closed(connectionUri, connection);
+                } catch (RuntimeException ignored) {
+                    // RU: cleanup hook не должен скрывать исходную ошибку transfer.
+                    // EN: A cleanup hook must not mask the original transfer failure.
+                }
             }
         }
     }
@@ -236,6 +288,9 @@ public final class HttpTransferClient {
             URI initial,
             URI current
     ) {
+        if (headers == null || headers.isEmpty()) {
+            return;
+        }
         boolean sameOrigin = sameOrigin(initial, current);
         for (Map.Entry<String, String> entry : headers.entrySet()) {
             String name = entry.getKey();
