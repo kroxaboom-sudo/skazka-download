@@ -2,6 +2,8 @@ import com.kroxaboom.skazka.download.DownloadCommand;
 import com.kroxaboom.skazka.download.DownloadState;
 import com.kroxaboom.skazka.download.DownloadTask;
 import com.kroxaboom.skazka.download.NetworkPolicy;
+import com.kroxaboom.skazka.download.QueuePlan;
+import com.kroxaboom.skazka.download.QueuePlanner;
 import com.kroxaboom.skazka.download.QueuePolicy;
 import com.kroxaboom.skazka.download.QueueRepository;
 import com.kroxaboom.skazka.download.QueueStore;
@@ -37,6 +39,43 @@ public final class DownloadCoreSelfTest {
         );
         check(!QueuePolicy.isEligible(retry, now + 30_000), "retry waits for deadline");
         check(QueuePolicy.isEligible(retry, now + 60_000), "retry becomes eligible");
+
+        DownloadTask failedOnce = QueuePolicy.afterFailure(waiting, 3, now + 3);
+        check(failedOnce.state() == DownloadState.RETRY, "first failure schedules retry");
+        check(failedOnce.retries() == 1, "first failure increments retry count");
+        check(failedOnce.retryAt() == now + 30_003L, "first failure uses retry policy");
+
+        DownloadTask exhausted = QueuePolicy.afterFailure(
+                new DownloadTask("task-3", DownloadState.RUNNING, 3, 0, now),
+                3,
+                now + 4
+        );
+        check(exhausted.state() == DownloadState.ERROR, "exhausted task becomes error");
+        check(exhausted.retryAt() == 0, "exhausted task clears retry deadline");
+
+        QueuePlan immediate = QueuePlanner.plan(List.of(
+                new DownloadTask("paused-first", DownloadState.PAUSED, 0, 0, now),
+                new DownloadTask("ready", DownloadState.WAITING, 0, 0, now),
+                new DownloadTask("later", DownloadState.RETRY, 1, now + 90_000, now)
+        ), now);
+        check(immediate.hasCandidate() && immediate.candidate().id().equals("ready"),
+                "planner keeps caller order and selects first eligible task");
+        check(immediate.wakeAt() == now + 90_000, "planner tracks earliest future retry");
+        check(!immediate.allTerminal(), "active queue is not terminal");
+
+        QueuePlan delayed = QueuePlanner.plan(List.of(
+                new DownloadTask("retry-a", DownloadState.RETRY, 1, now + 50_000, now),
+                new DownloadTask("retry-b", DownloadState.RETRY, 2, now + 20_000, now)
+        ), now);
+        check(!delayed.hasCandidate(), "future retries are not immediately eligible");
+        check(delayed.wakeAt() == now + 20_000, "planner picks earliest wakeup");
+
+        QueuePlan terminal = QueuePlanner.plan(List.of(
+                new DownloadTask("done", DownloadState.DONE, 0, 0, now),
+                new DownloadTask("cancelled", DownloadState.CANCELLED, 0, 0, now),
+                new DownloadTask("skipped", DownloadState.SKIPPED, 0, 0, now)
+        ), now);
+        check(terminal.allTerminal(), "terminal queue is detected");
 
         check(NetworkPolicy.permits(false, false, false, true), "unrestricted network");
         check(NetworkPolicy.permits(true, true, true, false), "validated Wi-Fi");
