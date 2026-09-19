@@ -3,14 +3,19 @@ import com.kroxaboom.skazka.download.DownloadState;
 import com.kroxaboom.skazka.download.DownloadTask;
 import com.kroxaboom.skazka.download.NetworkPolicy;
 import com.kroxaboom.skazka.download.QueuePolicy;
+import com.kroxaboom.skazka.download.QueueRepository;
+import com.kroxaboom.skazka.download.QueueStore;
 import com.kroxaboom.skazka.download.RetryAfter;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 public final class DownloadCoreSelfTest {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         long now = 1_700_000_000_000L;
         DownloadTask waiting = new DownloadTask("task-1", DownloadState.WAITING, 0, 0, now);
 
@@ -50,12 +55,56 @@ public final class DownloadCoreSelfTest {
         check(RetryAfter.fallbackMillis(429, "", now) == 5000L, "429 fallback");
         check(RetryAfter.fallbackMillis(503, "", now) == 3000L, "generic rejection fallback");
 
-        System.out.println("PASS: Skazka Download Core queue/retry/network policy");
+        MemoryStore store = new MemoryStore(List.of(
+                new DownloadTask("recover", DownloadState.RUNNING, 1, 123, now - 20),
+                new DownloadTask("paused", DownloadState.PAUSED, 0, 0, now - 10)
+        ));
+        QueueRepository repository = QueueRepository.open(store, now);
+        check(repository.get("recover").orElseThrow().state() == DownloadState.WAITING,
+                "running task recovered to waiting");
+        check(repository.get("recover").orElseThrow().retries() == 1,
+                "recovery preserves retry counter");
+        check(repository.get("paused").orElseThrow().state() == DownloadState.PAUSED,
+                "paused task remains paused");
+        check(store.writes == 1, "recovery snapshot persisted");
+
+        repository.apply("recover", DownloadCommand.PAUSE, now + 1);
+        check(repository.get("recover").orElseThrow().state() == DownloadState.PAUSED,
+                "repository persists command transition");
+
+        repository.put(new DownloadTask("future-retry", DownloadState.RETRY, 2, now + 1000, now + 2));
+        check(repository.nextEligible(now).isEmpty(), "future retry is not eligible");
+        check(repository.nextEligible(now + 1000).orElseThrow().id().equals("future-retry"),
+                "retry becomes eligible through repository");
+        check(repository.remove("future-retry"), "repository removes task");
+        check(repository.get("future-retry").isEmpty(), "removed task stays absent");
+
+        System.out.println("PASS: Skazka Download Core queue/persistence/recovery/network policy");
     }
 
     private static void check(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
+        }
+    }
+
+    private static final class MemoryStore implements QueueStore {
+        private List<DownloadTask> tasks;
+        private int writes;
+
+        private MemoryStore(Collection<DownloadTask> initial) {
+            tasks = new ArrayList<>(initial);
+        }
+
+        @Override
+        public Collection<DownloadTask> load() {
+            return new ArrayList<>(tasks);
+        }
+
+        @Override
+        public void replace(Collection<DownloadTask> replacement) {
+            tasks = new ArrayList<>(replacement);
+            writes++;
         }
     }
 }
