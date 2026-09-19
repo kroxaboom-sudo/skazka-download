@@ -6,32 +6,38 @@
 
 Общий движок загрузок для Skazka и других Android-проектов.
 
-**Статус:** `0.1.0-preview` — первый независимый слой уже вынесен и проверен.
+**Статус:** `0.1.1-preview`.
 
-- `download-core` — state machine очереди, команды pause/resume/retry/cancel, retry deadline, Retry-After/backoff и Wi-Fi-only network policy.
+- `download-core` — state machine очереди, pause/resume/retry/cancel, retry deadline, Retry-After/backoff и Wi-Fi-only network policy.
+- Persistence/recovery — `QueueStore` + `QueueRepository`: атомарный snapshot-контракт, восстановление RUNNING/VERIFYING/NETWORK после перезапуска и сохранение переходов очереди.
+- HTTP transfer — безопасная докачка через Range, явные redirect limits, проверка Content-Range/MIME/размера, callback для 429/503 и запрет переноса credential-заголовков на другой origin.
 - `download-android` — Android adapter для проверки активной сети.
-- Core не знает о Skazka Hub, `LocalState`, `ChapterStore`, конкретных источниках или UI.
-- Persistence очереди, source-worker registry, HTTP transfer и recovery будут переноситься следующими слоями после стабилизации core-контрактов.
+- Core не знает о Skazka Hub, `LocalState`, `ChapterStore`, конкретных источниках, production hosts или UI.
+- Конкретное приложение передаёт URI trust policy, network/cancellation gate, заголовки/cookies и persistence adapter.
+- Source-worker registry остаётся следующим слоем переноса.
 
-Проверено на HOSTKEY: core self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
+Проверено на HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS. Android assemble/lint проверяются перед merge.
 
 ## EN
 
 Reusable download-engine building blocks for Skazka and other Android projects.
 
-**Status:** `0.1.0-preview` — the first independent layer has been extracted and verified.
+**Status:** `0.1.1-preview`.
 
-- `download-core` — queue state machine, pause/resume/retry/cancel commands, retry deadlines, Retry-After/backoff, and Wi-Fi-only network policy.
+- `download-core` — queue state machine, pause/resume/retry/cancel, retry deadlines, Retry-After/backoff, and Wi-Fi-only network policy.
+- Persistence/recovery — `QueueStore` + `QueueRepository`: atomic snapshot contract, RUNNING/VERIFYING/NETWORK recovery after restart, and persisted queue transitions.
+- HTTP transfer — safe Range resume, explicit redirect limits, Content-Range/MIME/size validation, 429/503 callback, and cross-origin credential-header stripping.
 - `download-android` — Android adapter for active-network checks.
-- Core has no dependency on Skazka Hub, `LocalState`, `ChapterStore`, concrete sources, or UI.
-- Queue persistence, source-worker registry, HTTP transfer, and recovery will be extracted as the next layers after the core contracts stabilize.
+- Core has no dependency on Skazka Hub, `LocalState`, `ChapterStore`, concrete sources, production hosts, or UI.
+- The concrete application supplies URI trust policy, network/cancellation gate, headers/cookies, and a persistence adapter.
+- Source-worker registry remains the next extraction layer.
 
-Verified on HOSTKEY: core self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
+Verified on HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS. Android assemble/lint are verified before merge.
 
 ## Coordinates / Координаты
 
-- `com.kroxaboom.skazka:download-core:0.1.0-preview`
-- `com.kroxaboom.skazka:download-android:0.1.0-preview`
+- `com.kroxaboom.skazka:download-core:0.1.1-preview`
+- `com.kroxaboom.skazka:download-android:0.1.1-preview`
 
 See [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md).
 
