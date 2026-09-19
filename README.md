@@ -6,7 +6,9 @@
 
 Общий движок загрузок для Skazka и других Android-проектов.
 
-**Статус:** `0.1.8-preview`.
+**Статус:** `0.1.9-preview`.
+
+В 0.1.9 value-типы core переведены с Java records на обычные immutable-классы с тем же публичным API. Это убирает ссылки на `java.lang.Record` / `ObjectMethods` и сохраняет совместимость с Android 13 (API 33).
 
 - `download-core` — state machine очереди, pause/resume/retry/cancel, retry deadline, Retry-After/backoff и Wi-Fi-only network policy.
 - `HostThrottle` — общий per-host request spacing и persisted backoff; storage задаётся адаптером, Android-реализация `AndroidBackoffStore` использует SharedPreferences.
@@ -26,7 +28,9 @@
 
 Reusable download-engine building blocks for Skazka and other Android projects.
 
-**Status:** `0.1.8-preview`.
+**Status:** `0.1.9-preview`.
+
+In 0.1.9 the core value types moved from Java records to regular immutable classes with the same public API. This removes `java.lang.Record` / `ObjectMethods` references and preserves Android 13 (API 33) compatibility.
 
 - `download-core` — queue state machine, pause/resume/retry/cancel, retry deadlines, Retry-After/backoff, and Wi-Fi-only network policy.
 - `HostThrottle` — shared per-host request spacing and persisted backoff; storage is adapter-owned, with `AndroidBackoffStore` backed by SharedPreferences.
@@ -44,8 +48,8 @@ Verified on HOSTKEY: queue/persistence/recovery/planner/batch self-test — PASS
 
 ## Coordinates / Координаты
 
-- `com.kroxaboom.skazka:download-core:0.1.8-preview`
-- `com.kroxaboom.skazka:download-android:0.1.8-preview`
+- `com.kroxaboom.skazka:download-core:0.1.9-preview`
+- `com.kroxaboom.skazka:download-android:0.1.9-preview`
 
 See [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md).
 
