@@ -4,24 +4,35 @@
 
 ## RU
 
-Общий движок загрузок для текста, изображений, аудио, видео и других ресурсов.
+Общий движок загрузок для Skazka и других Android-проектов.
 
-**Текущий статус:** репозиторий создан как целевая граница модуля. Рабочий код переносится из существующих проектов поэтапно, с тестами и без копирования project-specific зависимостей.
+**Статус:** `0.1.0-preview` — первый независимый слой уже вынесен и проверен.
 
-**Граница модуля:** queue, pause/resume/retry, persistence, storage adapters, connectivity policy.
+- `download-core` — state machine очереди, команды pause/resume/retry/cancel, retry deadline, Retry-After/backoff и Wi-Fi-only network policy.
+- `download-android` — Android adapter для проверки активной сети.
+- Core не знает о Skazka Hub, `LocalState`, `ChapterStore`, конкретных источниках или UI.
+- Persistence очереди, source-worker registry, HTTP transfer и recovery будут переноситься следующими слоями после стабилизации core-контрактов.
 
-Перед первым стабильным релизом здесь появятся собственные versioning, тесты, changelog и лицензия. До выбора лицензии публикация кода не означает автоматическое разрешение на его повторное использование.
+Проверено на HOSTKEY: core self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
 ## EN
 
-Reusable download engine for text, images, audio, video, and other resources.
+Reusable download-engine building blocks for Skazka and other Android projects.
 
-**Current status:** this repository is the target module boundary. Working code is being extracted from existing projects incrementally, with tests and without copying project-specific dependencies.
+**Status:** `0.1.0-preview` — the first independent layer has been extracted and verified.
 
-**Module boundary:** queue, pause/resume/retry, persistence, storage adapters, connectivity policy.
+- `download-core` — queue state machine, pause/resume/retry/cancel commands, retry deadlines, Retry-After/backoff, and Wi-Fi-only network policy.
+- `download-android` — Android adapter for active-network checks.
+- Core has no dependency on Skazka Hub, `LocalState`, `ChapterStore`, concrete sources, or UI.
+- Queue persistence, source-worker registry, HTTP transfer, and recovery will be extracted as the next layers after the core contracts stabilize.
 
-Before the first stable release, this repository will get its own versioning, tests, changelog, and license. Until a license is selected, publishing the source does not automatically grant reuse rights.
+Verified on HOSTKEY: core self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
-## Development rules / Правила разработки
+## Coordinates / Координаты
+
+- `com.kroxaboom.skazka:download-core:0.1.0-preview`
+- `com.kroxaboom.skazka:download-android:0.1.0-preview`
 
 See [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md).
+
+> A license will be selected before the first stable public release. Until then, publication of the source does not grant reuse rights.
