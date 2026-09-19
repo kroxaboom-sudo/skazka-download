@@ -1,7 +1,6 @@
 package com.kroxaboom.skazka.download;
 
 import java.util.Locale;
-import java.util.Objects;
 
 /**
  * RU: Стабильный ключ worker-а: источник + маршрут.
