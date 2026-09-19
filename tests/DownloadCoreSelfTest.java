@@ -129,6 +129,39 @@ public final class DownloadCoreSelfTest {
         check(repository.remove("future-retry"), "repository removes task");
         check(repository.get("future-retry").isEmpty(), "removed task stays absent");
 
+        MemoryStore batchStore = new MemoryStore(List.of(
+                new DownloadTask("batch-a", DownloadState.WAITING, 0, 0, now),
+                new DownloadTask("batch-b", DownloadState.WAITING, 0, 0, now)
+        ));
+        QueueRepository batchRepository = QueueRepository.open(batchStore);
+        List<DownloadTask> batchPaused = batchRepository.applyAll(
+                List.of("batch-a", "batch-b", "batch-a"),
+                DownloadCommand.PAUSE,
+                now + 10
+        );
+        check(batchPaused.size() == 2, "batch command deduplicates ids");
+        check(batchPaused.stream().allMatch(task -> task.state() == DownloadState.PAUSED),
+                "batch command applies to every task");
+        check(batchStore.writes == 1, "batch command persists exactly once");
+
+        MemoryStore invalidBatchStore = new MemoryStore(List.of(
+                new DownloadTask("valid", DownloadState.WAITING, 0, 0, now),
+                new DownloadTask("done", DownloadState.DONE, 0, 0, now)
+        ));
+        QueueRepository invalidBatch = QueueRepository.open(invalidBatchStore);
+        try {
+            invalidBatch.applyAll(
+                    List.of("valid", "done"),
+                    DownloadCommand.PAUSE,
+                    now + 11
+            );
+            throw new AssertionError("invalid batch must fail atomically");
+        } catch (IllegalStateException expected) {
+            check(invalidBatch.get("valid").orElseThrow().state() == DownloadState.WAITING,
+                    "failed batch leaves earlier task unchanged");
+            check(invalidBatchStore.writes == 0, "failed batch does not persist");
+        }
+
         System.out.println("PASS: Skazka Download Core queue/persistence/recovery/network policy");
     }
 
