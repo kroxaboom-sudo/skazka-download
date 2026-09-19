@@ -16,7 +16,7 @@
 - Конкретное приложение передаёт URI trust policy, network/cancellation gate, заголовки/cookies и persistence adapter.
 - Source-worker registry остаётся следующим слоем переноса.
 
-Проверено на HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS. Android assemble/lint проверяются перед merge.
+Проверено на HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
 ## EN
 
@@ -32,7 +32,7 @@ Reusable download-engine building blocks for Skazka and other Android projects.
 - The concrete application supplies URI trust policy, network/cancellation gate, headers/cookies, and a persistence adapter.
 - Source-worker registry remains the next extraction layer.
 
-Verified on HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS. Android assemble/lint are verified before merge.
+Verified on HOSTKEY: queue/persistence/recovery self-test — PASS; HTTP redirect/resume/rejection self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
 ## Coordinates / Координаты
 
