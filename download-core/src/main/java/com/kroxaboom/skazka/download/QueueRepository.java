@@ -19,7 +19,19 @@ public final class QueueRepository {
         this.store = store;
     }
 
+    public static QueueRepository open(QueueStore store) throws IOException {
+        return openInternal(store, 0, false);
+    }
+
     public static QueueRepository open(QueueStore store, long now) throws IOException {
+        return openInternal(store, now, true);
+    }
+
+    private static QueueRepository openInternal(
+            QueueStore store,
+            long now,
+            boolean recoverInterrupted
+    ) throws IOException {
         if (store == null) {
             throw new IllegalArgumentException("Store is required");
         }
@@ -35,13 +47,15 @@ public final class QueueRepository {
                     continue;
                 }
 
-                DownloadTask recovered = RecoveryPolicy.recover(raw, now);
-                DownloadTask previous = repository.tasks.get(recovered.id());
+                DownloadTask loadedTask = recoverInterrupted
+                        ? RecoveryPolicy.recover(raw, now)
+                        : raw;
+                DownloadTask previous = repository.tasks.get(loadedTask.id());
 
-                if (previous == null || recovered.updatedAt() >= previous.updatedAt()) {
-                    repository.tasks.put(recovered.id(), recovered);
+                if (previous == null || loadedTask.updatedAt() >= previous.updatedAt()) {
+                    repository.tasks.put(loadedTask.id(), loadedTask);
                 }
-                if (previous != null || recovered != raw) {
+                if (previous != null || loadedTask != raw) {
                     changed = true;
                 }
             }
