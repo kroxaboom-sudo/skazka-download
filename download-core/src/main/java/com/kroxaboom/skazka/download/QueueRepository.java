@@ -99,6 +99,37 @@ public final class QueueRepository {
         return next;
     }
 
+    public synchronized List<DownloadTask> applyAll(
+            Collection<String> ids,
+            DownloadCommand command,
+            long now
+    ) throws IOException {
+        if (command == null) {
+            throw new IllegalArgumentException("Command is required");
+        }
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        LinkedHashMap<String, DownloadTask> updates = new LinkedHashMap<>();
+        for (String id : ids) {
+            String key = cleanId(id);
+            if (updates.containsKey(key)) {
+                continue;
+            }
+
+            DownloadTask current = tasks.get(key);
+            if (current == null) {
+                throw new IllegalArgumentException("Unknown task: " + key);
+            }
+            updates.put(key, QueuePolicy.apply(current, command, now));
+        }
+
+        tasks.putAll(updates);
+        persist();
+        return List.copyOf(updates.values());
+    }
+
     public synchronized boolean remove(String id) throws IOException {
         String key = cleanId(id);
         if (tasks.remove(key) == null) {
