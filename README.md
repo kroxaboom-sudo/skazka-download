@@ -6,10 +6,11 @@
 
 Общий движок загрузок для Skazka и других Android-проектов.
 
-**Статус:** `0.1.5-preview`.
+**Статус:** `0.1.6-preview`.
 
 - `download-core` — state machine очереди, pause/resume/retry/cancel, retry deadline, Retry-After/backoff и Wi-Fi-only network policy.
 - `HostThrottle` — общий per-host request spacing и persisted backoff; storage задаётся адаптером, Android-реализация `AndroidBackoffStore` использует SharedPreferences.
+- `TransferRateMeter` — потокобезопасный агрегатор скорости активных загрузок с monotonic clock и защитой от переполнения.
 - `QueuePlanner` — единый выбор следующей готовой задачи, ближайшего retry wake-up и terminal-состояния очереди; `QueuePolicy.afterFailure()` — единый переход RETRY/ERROR.
 - Persistence/recovery — `QueueStore` + `QueueRepository`: атомарный snapshot-контракт, восстановление RUNNING/VERIFYING/NETWORK после перезапуска и сохранение переходов очереди.
 - HTTP transfer — безопасная докачка через Range, явные redirect limits, проверка Content-Range/MIME/размера, callback для 429/503 и запрет переноса credential-заголовков на другой origin. В 0.1.4 добавлены per-URI dynamic headers и connection lifecycle hooks для cookie/throttle/cancellation адаптеров.
@@ -19,16 +20,17 @@
 - Конкретное приложение передаёт URI trust policy, network/cancellation gate, заголовки/cookies, persistence adapter и прикладной интерфейс выполнения worker-а.
 - Remote manifest может выбрать зарегистрированный ключ worker-а, но не может загрузить или установить исполняемый код.
 
-Проверено на HOSTKEY: queue/persistence/recovery/planner self-test — PASS; HTTP redirect/resume/hooks/rejection self-test — PASS; source-worker registry self-test — PASS; host-throttle self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
+Проверено на HOSTKEY: queue/persistence/recovery/planner self-test — PASS; HTTP redirect/resume/hooks/rejection self-test — PASS; source-worker registry self-test — PASS; host-throttle self-test — PASS; transfer-rate-meter self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
 ## EN
 
 Reusable download-engine building blocks for Skazka and other Android projects.
 
-**Status:** `0.1.5-preview`.
+**Status:** `0.1.6-preview`.
 
 - `download-core` — queue state machine, pause/resume/retry/cancel, retry deadlines, Retry-After/backoff, and Wi-Fi-only network policy.
 - `HostThrottle` — shared per-host request spacing and persisted backoff; storage is adapter-owned, with `AndroidBackoffStore` backed by SharedPreferences.
+- `TransferRateMeter` — thread-safe aggregate rate meter for active transfers with a monotonic clock and overflow protection.
 - `QueuePlanner` — shared selection of the next eligible task, earliest retry wake-up, and terminal queue state; `QueuePolicy.afterFailure()` — shared RETRY/ERROR transition.
 - Persistence/recovery — `QueueStore` + `QueueRepository`: atomic snapshot contract, RUNNING/VERIFYING/NETWORK recovery after restart, and persisted queue transitions.
 - HTTP transfer — safe Range resume, explicit redirect limits, Content-Range/MIME/size validation, 429/503 callback, and cross-origin credential-header stripping. 0.1.4 adds per-URI dynamic headers and connection lifecycle hooks for cookie/throttle/cancellation adapters.
@@ -38,12 +40,12 @@ Reusable download-engine building blocks for Skazka and other Android projects.
 - The concrete application supplies URI trust policy, network/cancellation gate, headers/cookies, persistence adapter, and the application-specific worker execution interface.
 - A remote manifest may select a registered worker key, but cannot download or install executable code.
 
-Verified on HOSTKEY: queue/persistence/recovery/planner self-test — PASS; HTTP redirect/resume/hooks/rejection self-test — PASS; source-worker registry self-test — PASS; host-throttle self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
+Verified on HOSTKEY: queue/persistence/recovery/planner self-test — PASS; HTTP redirect/resume/hooks/rejection self-test — PASS; source-worker registry self-test — PASS; host-throttle self-test — PASS; transfer-rate-meter self-test — PASS; `:download-android:assembleDebug` — PASS; `:download-android:lintDebug` — PASS.
 
 ## Coordinates / Координаты
 
-- `com.kroxaboom.skazka:download-core:0.1.5-preview`
-- `com.kroxaboom.skazka:download-android:0.1.5-preview`
+- `com.kroxaboom.skazka:download-core:0.1.6-preview`
+- `com.kroxaboom.skazka:download-android:0.1.6-preview`
 
 See [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md).
 
