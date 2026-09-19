@@ -16,7 +16,11 @@ public final class HttpTransferSelfTest {
         byte[] complete = "abcdef".getBytes(StandardCharsets.UTF_8);
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 
+        AtomicInteger dynamicHeaders = new AtomicInteger();
         server.createContext("/file", exchange -> {
+            if ("/file".equals(exchange.getRequestHeaders().getFirst("X-Dynamic"))) {
+                dynamicHeaders.incrementAndGet();
+            }
             exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
             exchange.sendResponseHeaders(200, complete.length);
             exchange.getResponseBody().write(complete);
@@ -56,6 +60,9 @@ public final class HttpTransferSelfTest {
             int port = server.getAddress().getPort();
             URI root = URI.create("http://127.0.0.1:" + port);
             AtomicInteger rejected = new AtomicInteger();
+            AtomicInteger beforeOpen = new AtomicInteger();
+            AtomicInteger opened = new AtomicInteger();
+            AtomicInteger closed = new AtomicInteger();
             HttpTransferClient client = new HttpTransferClient(
                     uri -> "127.0.0.1".equals(uri.getHost()),
                     () -> {},
@@ -64,7 +71,24 @@ public final class HttpTransferSelfTest {
                             rejected.incrementAndGet();
                         }
                     },
-                    total -> {}
+                    total -> {},
+                    uri -> Map.of("X-Dynamic", uri.getPath()),
+                    new HttpTransferClient.ConnectionLifecycle() {
+                        @Override
+                        public void beforeOpen(URI uri) {
+                            beforeOpen.incrementAndGet();
+                        }
+
+                        @Override
+                        public void opened(URI uri, java.net.HttpURLConnection connection) {
+                            opened.incrementAndGet();
+                        }
+
+                        @Override
+                        public void closed(URI uri, java.net.HttpURLConnection connection) {
+                            closed.incrementAndGet();
+                        }
+                    }
             );
 
             Path directory = Files.createTempDirectory("skazka-http-test");
@@ -97,7 +121,19 @@ public final class HttpTransferSelfTest {
                 check(rejected.get() == 1, "rejection callback");
             }
 
-            System.out.println("PASS: Skazka Download HTTP redirect/resume/rejection policy");
+            check(dynamicHeaders.get() == 1, "dynamic headers use current redirect URI");
+            check(beforeOpen.get() > 0, "before-open hook called");
+            check(beforeOpen.get() == opened.get(), "every opened connection passed before-open");
+            check(opened.get() == closed.get(), "connection lifecycle is balanced");
+
+            new HttpTransferClient(
+                    uri -> true,
+                    () -> {},
+                    null,
+                    null
+            );
+
+            System.out.println("PASS: Skazka Download HTTP redirect/resume/hooks/rejection policy");
         } finally {
             server.stop(0);
         }
