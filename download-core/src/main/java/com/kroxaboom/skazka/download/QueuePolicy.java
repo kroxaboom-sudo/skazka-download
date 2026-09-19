@@ -32,6 +32,12 @@ public final class QueuePolicy {
         return isActive(state) || state == DownloadState.PAUSED || state == DownloadState.ERROR;
     }
 
+    public static boolean isTerminal(DownloadState state) {
+        return state == DownloadState.DONE
+                || state == DownloadState.CANCELLED
+                || state == DownloadState.SKIPPED;
+    }
+
     public static boolean isEligible(DownloadTask task, long now) {
         if (task == null) {
             return false;
@@ -44,6 +50,27 @@ public final class QueuePolicy {
     public static long retryAt(int retry, long now) {
         int bounded = Math.max(1, Math.min(3, retry));
         return now + 30_000L * bounded;
+    }
+
+    public static DownloadTask afterFailure(DownloadTask task, int maxRetries, long now) {
+        if (task == null) {
+            throw new IllegalArgumentException("Task is required");
+        }
+        if (isTerminal(task.state())) {
+            throw new IllegalStateException("Terminal task cannot fail again");
+        }
+
+        int limit = Math.max(0, maxRetries);
+        if (task.retries() < limit) {
+            int nextRetries = task.retries() + 1;
+            return task.withState(
+                    DownloadState.RETRY,
+                    nextRetries,
+                    retryAt(nextRetries, now),
+                    now
+            );
+        }
+        return task.withState(DownloadState.ERROR, task.retries(), 0, now);
     }
 
     public static DownloadTask apply(DownloadTask task, DownloadCommand command, long now) {
