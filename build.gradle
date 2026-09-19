@@ -4,5 +4,5 @@ plugins {
 
 allprojects {
     group = 'com.kroxaboom.skazka'
-    version = '0.1.5-preview'
+    version = '0.1.6-preview'
 }
